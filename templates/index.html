@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Image Copyright Detection</title>
+</head>
+<body>
+
+    <h1>AI Image Copyright Detection System</h1>
+
+    <form action="/compare" method="POST" enctype="multipart/form-data">
+
+        <h3>Upload Original Image</h3>
+        <input type="file" name="image1">
+
+        <h3>Upload Suspicious Image</h3>
+        <input type="file" name="image2">
+
+        <br><br>
+
+        <button type="submit">Compare Images</button>
+
+    </form>
+
+    {% if score %}
+
+        <h2>Similarity Score: {{ score }}%</h2>
+
+        <h3>Original Image</h3>
+        <img src="{{ image1 }}" width="300">
+
+        <h3>Suspicious Image</h3>
+        <img src="{{ image2 }}" width="300">
+
+    {% endif %}
+
+</body>
+</html>
