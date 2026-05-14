@@ -31,6 +31,14 @@
         <h3>Suspicious Image</h3>
         <img src="{{ image2 }}" width="300">
 
+        {% if heatmap %}
+
+            <h3>Detected Differences</h3>
+
+            <img src="{{ heatmap }}" width="300">
+
+        {% endif %}
+
     {% endif %}
 
 </body>
