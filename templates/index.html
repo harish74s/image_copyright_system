@@ -7,6 +7,10 @@
 
     <h1>AI Image Copyright Detection System</h1>
 
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
     <form action="/compare" method="POST" enctype="multipart/form-data">
 
         <h3>Upload Original Image</h3>

@@ -5,9 +5,9 @@ import numpy as np
 import uuid
 from skimage.metrics import structural_similarity as ssim
 import tensorflow as tf
-from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.models import Model
+from keras.applications.resnet50 import ResNet50, preprocess_input
+from keras.preprocessing import image
+from keras.models import Model
 from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
