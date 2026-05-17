@@ -67,11 +67,22 @@
                 </div>
 
                 <button
+                    id="compareBtn"
                     type="submit"
                     class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 text-lg font-bold text-slate-950 transition hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500 active:scale-[0.99]"
                 >
                     Compare Images
                 </button>
+
+                <div
+                    id="loading"
+                    class="hidden mt-6 text-center"
+                >
+                    <div class="mx-auto h-16 w-16 animate-spin rounded-full border-b-4 border-blue-500"></div>
+                    <p class="mt-4 text-xl text-gray-300">
+                        AI is analyzing images...
+                    </p>
+                </div>
             </form>
 
             {% if score %}
@@ -84,8 +95,10 @@
 
                     <div class="w-full overflow-hidden rounded-full bg-gray-700 h-8">
                         <div
+                            id="scoreBarFill"
+                            data-score="{{ score }}"
                             class="h-8 bg-green-500 text-center font-bold leading-8 text-black transition-all duration-700 ease-out"
-                            style="width: {{ score }}%;"
+                            style="width: 0%;"
                         >
                             {{ score }}%
                         </div>
@@ -133,6 +146,21 @@
             {% endif %}
         </section>
     </main>
+
+    <script>
+        document.querySelector("form").addEventListener("submit", function() {
+            document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("compareBtn").disabled = true;
+            document.getElementById("compareBtn").innerText = "Processing...";
+        });
+
+        const scoreBarFill = document.getElementById("scoreBarFill");
+        if (scoreBarFill) {
+            const score = Number(scoreBarFill.dataset.score || 0);
+            const safeScore = Math.max(0, Math.min(100, score));
+            scoreBarFill.style.width = safeScore + "%";
+        }
+    </script>
 
 </body>
 </html>
