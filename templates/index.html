@@ -2,48 +2,137 @@
 <html>
 <head>
     <title>AI Image Copyright Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="min-h-screen bg-slate-950 text-white">
 
-    <h1>AI Image Copyright Detection System</h1>
+    <div class="absolute inset-0 -z-10 overflow-hidden">
+        <div class="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-cyan-500/20 blur-3xl"></div>
+        <div class="absolute right-0 top-40 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl"></div>
+    </div>
 
-    {% if error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
+    <main class="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-10 lg:px-10">
+        <section class="mb-10 text-center">
+            <p class="mb-4 inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-200">
+                AI Copyright Detection Dashboard
+            </p>
+            <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                AI Copyright Detection System
+            </h1>
+            <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                Upload two images to compare visual similarity, surface suspicious overlaps, and inspect the generated difference heatmap.
+            </p>
+        </section>
 
-    <form action="/compare" method="POST" enctype="multipart/form-data">
+        <section class="mx-auto w-full max-w-5xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-8 lg:p-10">
+            {% if error %}
+                <div class="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-200">
+                    {{ error }}
+                </div>
+            {% endif %}
 
-        <h3>Upload Original Image</h3>
-        <input type="file" name="image1">
+            <form action="/compare" method="POST" enctype="multipart/form-data" class="space-y-6">
 
-        <h3>Upload Suspicious Image</h3>
-        <input type="file" name="image2">
+                <div class="grid gap-6 md:grid-cols-2">
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                        <label class="block text-lg font-semibold text-white">
+                            Upload Original Image
+                        </label>
+                        <p class="mt-2 text-sm text-slate-400">
+                            Choose the reference image you want to protect.
+                        </p>
+                        <input
+                            type="file"
+                            name="image1"
+                            class="mt-4 block w-full cursor-pointer rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 hover:border-cyan-400/40"
+                            required
+                        >
+                    </div>
 
-        <br><br>
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                        <label class="block text-lg font-semibold text-white">
+                            Upload Suspicious Image
+                        </label>
+                        <p class="mt-2 text-sm text-slate-400">
+                            Choose the image you want to inspect for reuse or copying.
+                        </p>
+                        <input
+                            type="file"
+                            name="image2"
+                            class="mt-4 block w-full cursor-pointer rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-blue-400/40"
+                            required
+                        >
+                    </div>
+                </div>
 
-        <button type="submit">Compare Images</button>
+                <button
+                    type="submit"
+                    class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 text-lg font-bold text-slate-950 transition hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500 active:scale-[0.99]"
+                >
+                    Compare Images
+                </button>
+            </form>
 
-    </form>
+            {% if score %}
 
-    {% if score %}
+                <div class="mt-10 text-center">
+                    <p class="text-sm uppercase tracking-[0.3em] text-slate-400">Similarity Score</p>
+                    <h2 class="mt-3 text-4xl font-bold text-emerald-400 mb-4 sm:text-5xl">
+                        {{ score }}%
+                    </h2>
 
-        <h2>Similarity Score: {{ score }}%</h2>
+                    <div class="w-full overflow-hidden rounded-full bg-gray-700 h-8">
+                        <div
+                            class="h-8 bg-green-500 text-center font-bold leading-8 text-black transition-all duration-700 ease-out"
+                            style="width: {{ score }}%;"
+                        >
+                            {{ score }}%
+                        </div>
+                    </div>
+                </div>
 
-        <h3>Original Image</h3>
-        <img src="{{ image1 }}" width="300">
+                <div class="mt-10 grid gap-8 md:grid-cols-2">
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                        <h3 class="mb-4 text-2xl font-semibold text-white">
+                            Original Image
+                        </h3>
+                        <img
+                            src="{{ image1 }}"
+                            alt="Original image"
+                            class="h-auto w-full rounded-xl border border-white/10 shadow-lg"
+                        >
+                    </div>
 
-        <h3>Suspicious Image</h3>
-        <img src="{{ image2 }}" width="300">
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                        <h3 class="mb-4 text-2xl font-semibold text-white">
+                            Suspicious Image
+                        </h3>
+                        <img
+                            src="{{ image2 }}"
+                            alt="Suspicious image"
+                            class="h-auto w-full rounded-xl border border-white/10 shadow-lg"
+                        >
+                    </div>
+                </div>
 
-        {% if heatmap %}
+                {% if heatmap %}
 
-            <h3>Detected Differences</h3>
+                    <div class="mt-10 rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+                        <h3 class="mb-4 text-3xl font-bold text-red-400">
+                            AI Detected Differences
+                        </h3>
+                        <img
+                            src="{{ heatmap }}"
+                            alt="Difference heatmap"
+                            class="h-auto w-full rounded-xl border border-red-500/40 shadow-2xl shadow-red-950/30"
+                        >
+                    </div>
 
-            <img src="{{ heatmap }}" width="300">
-
-        {% endif %}
-
-    {% endif %}
+                {% endif %}
+            {% endif %}
+        </section>
+    </main>
 
 </body>
 </html>

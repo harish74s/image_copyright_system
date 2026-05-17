@@ -181,6 +181,9 @@ def compare():
 
     overlay = cv2.addWeighted(img2_small, 0.6, combined_color, 0.4, 0)
 
+    # smooth noisy activations before contour detection
+    diff_map = cv2.GaussianBlur(diff_map, (11, 11), 0)
+
     # threshold diff_map to find differing regions
     thresh = cv2.threshold(
         diff_map,
@@ -198,16 +201,18 @@ def compare():
     for contour in contours:
         area = cv2.contourArea(contour)
 
-        if area > 100:
-            x, y, w, h = cv2.boundingRect(contour)
+        if area < 500:
+            continue
 
-            cv2.rectangle(
-                overlay,
-                (x, y),
-                (x + w, y + h),
-                (0, 0, 255),
-                2
-            )
+        x, y, w, h = cv2.boundingRect(contour)
+
+        cv2.rectangle(
+            overlay,
+            (x, y),
+            (x + w, y + h),
+            (0, 0, 255),
+            2
+        )
 
     heatmap_filename = f"heatmap_{uuid.uuid4().hex}.jpg"
     heatmap_path = os.path.join(
