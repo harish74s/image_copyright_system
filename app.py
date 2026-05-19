@@ -39,6 +39,88 @@ conv_model = Model(inputs=base_model.input, outputs=conv_layer.output)
 pred_model = Model(inputs=base_model.input, outputs=[conv_layer.output, base_model.output])
 
 
+def _load_image_pair(path1, path2, target_size=(300, 300)):
+    img1 = cv2.imread(path1)
+    img2 = cv2.imread(path2)
+
+    if img1 is None or img2 is None:
+        raise ValueError('Unable to read one or both uploaded images.')
+
+    img1_small = cv2.resize(img1, target_size)
+    img2_small = cv2.resize(img2, target_size)
+
+    return img1_small, img2_small
+
+
+def _normalized_embedding_similarity(features1, features2):
+    raw_similarity = float(cosine_similarity([features1], [features2])[0][0])
+    return float(np.clip(raw_similarity, 0.0, 1.0))
+
+
+def _ssim_similarity(img1_small, img2_small):
+    gray1 = cv2.cvtColor(img1_small, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2_small, cv2.COLOR_BGR2GRAY)
+    value = float(ssim(gray1, gray2))
+    return float(np.clip(value, 0.0, 1.0))
+
+
+def _histogram_similarity(img1_small, img2_small):
+    hsv1 = cv2.cvtColor(img1_small, cv2.COLOR_BGR2HSV)
+    hsv2 = cv2.cvtColor(img2_small, cv2.COLOR_BGR2HSV)
+
+    hist1 = cv2.calcHist([hsv1], [0, 1], None, [32, 32], [0, 180, 0, 256])
+    hist2 = cv2.calcHist([hsv2], [0, 1], None, [32, 32], [0, 180, 0, 256])
+
+    cv2.normalize(hist1, hist1, 0, 1, cv2.NORM_MINMAX)
+    cv2.normalize(hist2, hist2, 0, 1, cv2.NORM_MINMAX)
+
+    correlation = float(cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL))
+    return float(np.clip((correlation + 1.0) / 2.0, 0.0, 1.0))
+
+
+def _estimate_image_category(img_small):
+    gray = cv2.cvtColor(img_small, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 80, 160)
+    edge_density = float(np.count_nonzero(edges)) / float(edges.size)
+
+    mean_bgr = np.mean(img_small.reshape(-1, 3), axis=0)
+    color_spread = float(np.std(mean_bgr))
+    brightness = float(np.mean(gray))
+    saturation = float(np.mean(cv2.cvtColor(img_small, cv2.COLOR_BGR2HSV)[:, :, 1]))
+    aspect_ratio = float(img_small.shape[1]) / float(img_small.shape[0])
+
+    if edge_density > 0.14 and saturation < 50 and brightness > 110:
+        return 'document'
+
+    if edge_density > 0.12 and saturation >= 50:
+        return 'screenshot'
+
+    if aspect_ratio > 1.5 and saturation > 45 and edge_density < 0.10:
+        return 'landscape'
+
+    if saturation > 55 and color_spread > 25 and edge_density < 0.12:
+        return 'photo'
+
+    return 'graphic'
+
+
+def _apply_category_filter(score, category1, category2):
+    if category1 == category2:
+        return score, False
+
+    return score * 0.45, True
+
+
+def _build_verdict(final_score):
+    if final_score <= 25:
+        return 'Completely Different'
+    if final_score <= 50:
+        return 'Slight Visual Similarity'
+    if final_score <= 75:
+        return 'Possibly Modified Copy'
+    return 'Highly Similar / Copied'
+
+
 def extract_features(img_path):
 
     img = image.load_img(img_path, target_size=(224, 224))
@@ -147,26 +229,40 @@ def compare():
     image1.save(path1)
     image2.save(path2)
 
-    img1 = cv2.imread(path1)
-    img2 = cv2.imread(path2)
+    try:
+        img1_small, img2_small = _load_image_pair(path1, path2, target_size=(300, 300))
+    except ValueError as exc:
+        return render_template('index.html', error=str(exc))
 
-    # create smaller copies for visualization / diff detection
-    img1_small = cv2.resize(img1, (300, 300))
-    img2_small = cv2.resize(img2, (300, 300))
+    category1 = _estimate_image_category(img1_small)
+    category2 = _estimate_image_category(img2_small)
 
-    gray1 = cv2.cvtColor(img1_small, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(img2_small, cv2.COLOR_BGR2GRAY)
-
-    # Extract deep features (embeddings) and compute cosine similarity
     features1 = extract_features(path1)
     features2 = extract_features(path2)
 
-    similarity = cosine_similarity(
-        [features1],
-        [features2]
-    )[0][0]
+    embedding_score = _normalized_embedding_similarity(features1, features2)
+    if embedding_score < 0.70:
+        embedding_score = 0.0
 
-    similarity = round(similarity * 100, 2)
+    ssim_score = _ssim_similarity(img1_small, img2_small)
+    histogram_score = _histogram_similarity(img1_small, img2_small)
+
+    final_score = (
+        (ssim_score * 0.3) +
+        (histogram_score * 0.2) +
+        (embedding_score * 0.5)
+    )
+
+    final_score, category_mismatch = _apply_category_filter(
+        final_score,
+        category1,
+        category2
+    )
+
+    similarity = round(final_score * 100, 2)
+    verdict = _build_verdict(similarity)
+    if similarity < 60:
+        verdict = 'Different Images'
 
     # For learned localization, compute a spatial similarity map from conv feature maps
     sim_norm, diff_map = compute_spatial_similarity_map(path1, path2, out_size=(300, 300))
@@ -179,18 +275,22 @@ def compare():
 
     combined_color = cv2.addWeighted(sim_color, 0.5, grad_color, 0.5, 0)
 
-    overlay = cv2.addWeighted(img2_small, 0.6, combined_color, 0.4, 0)
+    overlay = cv2.addWeighted(img2_small, 0.75, combined_color, 0.25, 0)
 
     # smooth noisy activations before contour detection
-    diff_map = cv2.GaussianBlur(diff_map, (11, 11), 0)
+    diff_map = cv2.GaussianBlur(diff_map, (5, 5), 0)
 
     # threshold diff_map to find differing regions
-    thresh = cv2.threshold(
+    _, thresh = cv2.threshold(
         diff_map,
         0,
         255,
-        cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )[1]
+        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    )
+
+    kernel = np.ones((3, 3), np.uint8)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
 
     contours, _ = cv2.findContours(
         thresh,
@@ -201,10 +301,25 @@ def compare():
     for contour in contours:
         area = cv2.contourArea(contour)
 
-        if area < 500:
+        if area < 2200:
+            continue
+
+        if area > 50000:
             continue
 
         x, y, w, h = cv2.boundingRect(contour)
+        if w < 12 or h < 12:
+            continue
+
+        contour_mask = np.zeros(thresh.shape, dtype=np.uint8)
+        cv2.drawContours(contour_mask, [contour], -1, 255, -1)
+        contour_area = float(np.count_nonzero(contour_mask))
+        if contour_area <= 0:
+            continue
+
+        fill_ratio = float(area) / contour_area
+        if fill_ratio < 0.35:
+            continue
 
         cv2.rectangle(
             overlay,
@@ -226,6 +341,13 @@ def compare():
     return render_template(
         'index.html',
         score=similarity,
+        verdict=verdict,
+        category1=category1,
+        category2=category2,
+        category_mismatch=category_mismatch,
+        ssim_score=round(ssim_score * 100, 2),
+        histogram_score=round(histogram_score * 100, 2),
+        embedding_score=round(embedding_score * 100, 2),
         image1='/' + path1,
         image2='/' + path2,
         heatmap='/' + heatmap_path

@@ -93,6 +93,22 @@
                         {{ score }}%
                     </h2>
 
+                    {% if verdict %}
+                        <div class="mx-auto mb-4 inline-flex flex-col items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-5 py-3">
+                            <span class="text-xs uppercase tracking-[0.35em] text-cyan-200/80">Verdict</span>
+                            <span class="mt-1 text-lg font-semibold text-white">{{ verdict }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if category1 and category2 %}
+                        <p class="mx-auto mb-4 max-w-2xl text-sm text-slate-300">
+                            Category filter: {{ category1 }} vs {{ category2 }}
+                            {% if category_mismatch %}
+                                <span class="font-semibold text-amber-300">- mismatch penalty applied</span>
+                            {% endif %}
+                        </p>
+                    {% endif %}
+
                     <div class="w-full overflow-hidden rounded-full bg-gray-700 h-8">
                         <div
                             id="scoreBarFill"
@@ -103,6 +119,23 @@
                             {{ score }}%
                         </div>
                     </div>
+
+                    {% if ssim_score is defined and histogram_score is defined and embedding_score is defined %}
+                        <div class="mx-auto mt-6 grid max-w-4xl gap-4 sm:grid-cols-3">
+                            <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">SSIM</p>
+                                <p class="mt-2 text-2xl font-bold text-white">{{ ssim_score }}%</p>
+                            </div>
+                            <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Histogram</p>
+                                <p class="mt-2 text-2xl font-bold text-white">{{ histogram_score }}%</p>
+                            </div>
+                            <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Embedding</p>
+                                <p class="mt-2 text-2xl font-bold text-white">{{ embedding_score }}%</p>
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="mt-10 grid gap-8 md:grid-cols-2">
